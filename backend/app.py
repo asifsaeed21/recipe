@@ -10,7 +10,20 @@ app = Flask(__name__)
 CORS(app)  # FIX: Enable frontend-backend communication
 
 # --- Load Model from Zip File ---
-ZIP_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'recipe_model.pkl.zip')
+# Handle both local and Vercel deployment paths
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_zip_path_local = os.path.join(_current_dir, 'recipe_model.pkl.zip')
+_zip_path_parent = os.path.join(os.path.dirname(_current_dir), 'recipe_model.pkl.zip')
+
+# Try different paths for Vercel deployment
+if os.path.exists(_zip_path_local):
+    ZIP_MODEL_PATH = _zip_path_local
+elif os.path.exists(_zip_path_parent):
+    ZIP_MODEL_PATH = _zip_path_parent
+else:
+    # For Vercel, try current working directory
+    ZIP_MODEL_PATH = os.path.join(os.getcwd(), 'recipe_model.pkl.zip')
+
 MODEL_NAME_IN_ZIP = 'recipe_model.pkl'
 
 # Global variables for model
@@ -138,4 +151,8 @@ def home():
 	return jsonify({"message": "Recipe Recommendation API", "endpoints": ["/health", "/recommend"]}), 200
 
 if __name__ == '__main__':
-	app.run(debug=True, host='127.0.0.1', port=5001)
+	# Support both localhost and production (Railway, Render, etc.)
+	port = int(os.environ.get('PORT', 5001))
+	host = '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1'
+	debug = os.environ.get('FLASK_ENV') != 'production'
+	app.run(debug=debug, host=host, port=port)
